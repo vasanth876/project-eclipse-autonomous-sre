@@ -15,6 +15,129 @@ except ImportError:
 
 st.set_page_config(page_title="Project Eclipse | Autonomous SRE", page_icon="🛡️", layout="wide")
 
+
+# ---------- Project Eclipse visual refresh ----------
+st.markdown("""
+<style>
+:root {
+  --ink: #f5f3ff;
+  --muted: #b9b4d2;
+  --violet: #8b5cf6;
+  --pink: #ec4899;
+  --cyan: #22d3ee;
+  --orange: #fb923c;
+  --green: #34d399;
+}
+.stApp {
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(139,92,246,.24), transparent 34%),
+    radial-gradient(ellipse at 92% 8%, rgba(236,72,153,.17), transparent 30%),
+    radial-gradient(ellipse at 70% 90%, rgba(34,211,238,.12), transparent 32%),
+    linear-gradient(145deg, #090b1a 0%, #11132b 48%, #101b32 100%);
+  color: var(--ink);
+}
+[data-testid="stHeader"] { background: rgba(9,11,26,.72); }
+[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #171334 0%, #171a3c 55%, #10283b 100%);
+  border-right: 1px solid rgba(167,139,250,.22);
+}
+[data-testid="stSidebar"] * { color: #f4f0ff; }
+[data-testid="stSidebar"] [data-testid="stSelectbox"] > div,
+[data-testid="stSidebar"] .stButton > button {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(196,181,253,.24);
+  border-radius: 12px;
+}
+h1, h2, h3, h4 { color: #f8f7ff !important; letter-spacing: -.035em; }
+p, label, [data-testid="stCaptionContainer"] { color: #c8c4df; }
+[data-testid="stMetric"] {
+  background: linear-gradient(145deg, rgba(139,92,246,.23), rgba(34,211,238,.09));
+  border: 1px solid rgba(167,139,250,.30);
+  border-radius: 18px;
+  padding: 17px 18px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.20);
+  min-height: 116px;
+}
+[data-testid="stMetricLabel"] { color: #d7d0f5 !important; }
+[data-testid="stMetricValue"] { color: #ffffff !important; font-weight: 800; }
+[data-testid="stMetricDelta"] { font-weight: 650; }
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+  border: 1px solid rgba(167,139,250,.22);
+  border-radius: 14px;
+  overflow: hidden;
+}
+[data-testid="stAlert"] {
+  border-radius: 14px;
+  border: 1px solid rgba(167,139,250,.24);
+  background: rgba(255,255,255,.055);
+}
+.stButton > button, .stDownloadButton > button {
+  border: 0 !important;
+  border-radius: 12px !important;
+  color: white !important;
+  font-weight: 750 !important;
+  background: linear-gradient(100deg, #7c3aed 0%, #db2777 52%, #0891b2 100%) !important;
+  box-shadow: 0 8px 22px rgba(124,58,237,.24);
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+.stButton > button:hover, .stDownloadButton > button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+  box-shadow: 0 12px 28px rgba(219,39,119,.28);
+}
+.stButton > button:disabled {
+  background: linear-gradient(100deg, #45415f, #55506b) !important;
+  color: #b9b4c9 !important;
+}
+[data-testid="stProgressBar"] > div > div {
+  background: linear-gradient(90deg, #8b5cf6, #ec4899, #22d3ee);
+  border-radius: 99px;
+}
+input, textarea, [data-baseweb="select"] > div {
+  background-color: rgba(255,255,255,.075) !important;
+  border-color: rgba(167,139,250,.28) !important;
+  border-radius: 10px !important;
+}
+hr { border-color: rgba(167,139,250,.22) !important; }
+[data-testid="stExpander"] {
+  border: 1px solid rgba(167,139,250,.24);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+[data-testid="stCheckbox"] label { color: #eeeaff !important; }
+.ec-hero {
+  padding: 26px 30px;
+  border-radius: 22px;
+  margin: 8px 0 20px 0;
+  background:
+    radial-gradient(circle at 85% 15%, rgba(34,211,238,.30), transparent 26%),
+    radial-gradient(circle at 15% 100%, rgba(236,72,153,.30), transparent 35%),
+    linear-gradient(115deg, #31206d 0%, #54256f 48%, #123d59 100%);
+  border: 1px solid rgba(216,180,254,.34);
+  box-shadow: 0 18px 48px rgba(0,0,0,.25);
+}
+.ec-kicker { color: #a5f3fc; font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.ec-title { color: white; font-size: clamp(27px, 4vw, 42px); font-weight: 900; letter-spacing: -.045em; margin: 7px 0 5px; }
+.ec-sub { color: #e9ddff; font-size: 15px; }
+.ec-chip {
+  display: inline-block; padding: 6px 11px; margin: 12px 7px 0 0;
+  border-radius: 999px; color: white; font-size: 11px; font-weight: 800;
+  border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12);
+}
+.ec-status {
+  padding: 13px 17px; margin: 8px 0 18px; border-radius: 14px;
+  background: linear-gradient(90deg, rgba(236,72,153,.17), rgba(139,92,246,.16), rgba(34,211,238,.12));
+  border: 1px solid rgba(196,181,253,.28); color: #f8f7ff;
+}
+.ec-status strong { color: #fff; }
+@media (max-width: 700px) {
+  .ec-hero { padding: 21px; }
+  [data-testid="stMetric"] { padding: 12px; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # ---------- Demo data and deterministic incident reasoning ----------
 SCENARIOS = {
     "Database connection exhaustion after deployment": {
@@ -246,13 +369,25 @@ with st.sidebar:
     st.caption("Prototype mode: synthetic data only. No production systems are connected.")
 
 # ---------- Header ----------
-st.title("Production Incident Investigation & Recovery")
-st.markdown("**Detect → Investigate → Reason → Recover → Verify → Learn**")
-st.caption("Team Titans • Project Eclipse • Simulated production environment")
+st.markdown("""
+<div class="ec-hero">
+  <div class="ec-kicker">TEAM TITANS · AUTONOMOUS SRE PLATFORM</div>
+  <div class="ec-title">⚡ PROJECT ECLIPSE</div>
+  <div class="ec-sub">Production Incident Investigation &amp; Recovery</div>
+  <span class="ec-chip">✦ AI-ASSISTED INVESTIGATION</span>
+  <span class="ec-chip">◈ HUMAN-IN-THE-LOOP</span>
+  <span class="ec-chip">↗ SIMULATED RECOVERY</span>
+</div>
+""", unsafe_allow_html=True)
 
 status = "RECOVERED" if st.session_state.recovered else ("CRITICAL" if st.session_state.incident_detected else "MONITORING")
 color = "🟢" if status == "RECOVERED" else ("🔴" if status == "CRITICAL" else "🟡")
-st.markdown(f"### {color} System status: **{status}** &nbsp;&nbsp; · &nbsp;&nbsp; Incident: `{st.session_state.incident_id}` &nbsp;&nbsp; · &nbsp;&nbsp; Service: `{scenario['service']}`")
+st.markdown(
+    f'<div class="ec-status">{color} &nbsp; <strong>SYSTEM STATUS: {status}</strong>'
+    f' &nbsp;&nbsp; · &nbsp;&nbsp; INCIDENT: <strong>{st.session_state.incident_id}</strong>'
+    f' &nbsp;&nbsp; · &nbsp;&nbsp; SERVICE: <strong>{scenario["service"]}</strong></div>',
+    unsafe_allow_html=True,
+)
 
 # ---------- Metric row ----------
 m1, m2, m3, m4, m5 = st.columns(5)
@@ -266,7 +401,7 @@ st.markdown("---")
 left, right = st.columns([1.15, 0.85], gap="large")
 
 with left:
-    st.subheader("1 · Incident investigation")
+    st.subheader("🧭  01 · Incident investigation")
     st.info(scenario["summary"])
     st.markdown("**Simulated application logs**")
     log_df = pd.DataFrame(scenario["logs"], columns=["Time", "Level", "Message"])
@@ -287,7 +422,7 @@ with left:
         st.info("Run the AI investigation to generate an evidence-based explanation and recovery plan.")
 
 with right:
-    st.subheader("2 · Root cause hypotheses")
+    st.subheader("🧠  02 · Root cause hypotheses")
     for i, item in enumerate(scenario["hypotheses"], start=1):
         st.markdown(f"**{i}. {item['name']}**")
         st.progress(item["score"] / 100, text=f"Evidence support score: {item['score']} / 100")
@@ -316,7 +451,7 @@ with right:
 
 # ---------- Before/after and workflow ----------
 st.markdown("---")
-st.subheader("3 · Recovery verification")
+st.subheader("🛠️  03 · Recovery verification")
 before = scenario["before"]
 after = scenario["after"] if st.session_state.recovered else None
 comparison = pd.DataFrame({
@@ -344,7 +479,7 @@ for col, (label, done) in zip(cols, steps):
     col.metric(label, "Complete" if done else "Pending")
 
 st.markdown("---")
-st.subheader("4 · Incident timeline & downloadable report")
+st.subheader("🪄  04 · Incident timeline & downloadable report")
 if not st.session_state.timeline:
     st.session_state.timeline = [{
         "time": datetime.now().strftime("%H:%M:%S"),
