@@ -1,9 +1,17 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
+    types = None
 
 st.set_page_config(page_title="Project Eclipse | Autonomous SRE", page_icon="🛡️", layout="wide")
 
@@ -88,6 +96,93 @@ SCENARIOS = {
     },
 }
 
+def get_gemini_api_key():
+    """Read the key from Streamlit Secrets first, then environment variables."""
+    try:
+        key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        key = ""
+    return key or os.getenv("GEMINI_API_KEY", "")
+
+
+def run_gemini_investigation(scenario, current_metrics):
+    """Ask Gemini to analyze supplied synthetic evidence; no infrastructure is touched."""
+    api_key = get_gemini_api_key()
+    if not api_key:
+        return "**Gemini is not configured.** Add `GEMINI_API_KEY` in Streamlit Cloud → Manage app → Settings → Secrets."
+    if genai is None:
+        return "**Gemini SDK is missing.** Add `google-genai` to requirements.txt and redeploy."
+
+    prompt = f"""You are the investigation reasoning component of Project Eclipse, a simulated SRE incident-response prototype.
+Analyze ONLY the supplied synthetic incident data. Do not claim to have queried live systems or executed any action.
+Return concise, clearly labeled sections:
+1. INVESTIGATION: timeline and important signals
+2. ROOT CAUSE: most likely cause and two alternatives, with evidence for and against
+3. RECOVERY PLAN: safest proposed action, risks, and rollback/guard conditions
+4. VERIFICATION PLAN: exact metrics/checks that should be inspected after recovery
+5. UNCERTAINTY: missing evidence and confidence (qualitative: low/medium/high)
+Do not invent telemetry. State that all recovery is simulated and requires human approval.
+
+Scenario: {st.session_state.scenario_name}
+Service: {scenario['service']}
+Severity: {scenario['severity']}
+Summary: {scenario['summary']}
+Current metrics: {json.dumps(current_metrics)}
+Logs: {json.dumps(scenario['logs'])}
+Evidence: {json.dumps(scenario['evidence'])}
+Existing rule-based hypotheses: {json.dumps(scenario['hypotheses'])}
+Existing proposed action: {scenario['action']}
+"""
+    try:
+        client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=20000),
+        )
+        interaction = client.interactions.create(
+            model="models/gemini-3.8-flash",
+            input=prompt,
+        )
+        return interaction.output_text or "Gemini returned an empty response. Please try again."
+    except Exception as exc:
+        # Keep the demo usable if the optional Gemini service is unavailable.
+        ranked = sorted(scenario["hypotheses"], key=lambda item: item["score"], reverse=True)
+        primary = ranked[0]
+        alternatives = ranked[1:]
+        evidence_lines = "\\n".join(
+            f"- {item[0]} — {item[1]}" for item in scenario["evidence"]
+        )
+        alternative_lines = "\\n".join(
+            f"- {item['name']}: {item['reason']}" for item in alternatives
+        )
+        return f"""**Gemini is temporarily unavailable** (`{type(exc).__name__}`). Showing the prototype's transparent rule-based fallback analysis instead.
+
+### INVESTIGATION
+{scenario['summary']}
+
+Current synthetic metrics: `{json.dumps(current_metrics)}`
+
+### ROOT CAUSE
+**Most supported hypothesis:** {primary['name']} (prototype evidence-support score: {primary['score']}/100).
+
+{primary['reason']}
+
+**Evidence:**
+{evidence_lines}
+
+**Alternative hypotheses:**
+{alternative_lines}
+
+### RECOVERY PLAN
+{scenario['action']}
+
+Risk: {scenario['risk']}
+
+### VERIFICATION PLAN
+Compare error rate, p95 latency, CPU, memory, and database connections with the before-recovery values. Confirm that error rate and latency decrease and that resource metrics return to the scenario's expected healthy range.
+
+### UNCERTAINTY
+This fallback uses predefined scenario rules and synthetic evidence, not live telemetry or Gemini reasoning. Human approval is required. Recovery remains simulated only."""
+
 def init_state():
     defaults = {
         "scenario_name": list(SCENARIOS.keys())[0],
@@ -96,6 +191,7 @@ def init_state():
         "recovered": False,
         "timeline": [],
         "incident_id": "INC-2026-1042",
+        "ai_investigation": "",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -112,6 +208,7 @@ def reset_demo():
     st.session_state.recovery_approved = False
     st.session_state.recovered = False
     st.session_state.timeline = []
+    st.session_state.ai_investigation = ""
     add_event("Demo reset. Monitoring is ready.")
 
 init_state()
@@ -130,6 +227,7 @@ with st.sidebar:
         st.session_state.recovery_approved = False
         st.session_state.recovered = False
         st.session_state.timeline = []
+        st.session_state.ai_investigation = ""
         st.session_state.incident_id = f"INC-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         add_event(f"Scenario selected: {chosen}")
         st.rerun()
@@ -138,6 +236,7 @@ with st.sidebar:
         st.session_state.incident_detected = True
         st.session_state.recovery_approved = False
         st.session_state.recovered = False
+        st.session_state.ai_investigation = ""
         add_event("Incident detected from simulated telemetry.")
         st.rerun()
     if st.button("↻ Reset demo", use_container_width=True):
@@ -175,6 +274,17 @@ with left:
     st.markdown("**Evidence collected**")
     evidence_df = pd.DataFrame(scenario["evidence"], columns=["Evidence", "Interpretation"])
     st.dataframe(evidence_df, use_container_width=True, hide_index=True)
+
+    st.markdown("###  🤖 Gemini AI investigation")
+    st.caption("AI analysis of the synthetic logs and metrics shown above. It does not access or modify production systems.")
+    if st.button("Run AI investigation", type="primary", use_container_width=True):
+        with st.spinner("Gemini is analyzing the incident evidence..."):
+            st.session_state.ai_investigation = run_gemini_investigation(scenario, current)
+        add_event("Gemini AI investigation completed (analysis only).")
+    if st.session_state.ai_investigation:
+        st.markdown(st.session_state.ai_investigation)
+    else:
+        st.info("Run the AI investigation to generate an evidence-based explanation and recovery plan.")
 
 with right:
     st.subheader("2 · Root cause hypotheses")
@@ -253,6 +363,7 @@ report = {
     "evidence": [{"item": a, "interpretation": b} for a, b in scenario["evidence"]],
     "hypotheses": scenario["hypotheses"],
     "recommended_action": scenario["action"],
+    "gemini_ai_investigation": st.session_state.ai_investigation,
     "human_approved": bool(st.session_state.recovery_approved),
     "recovery_simulated": bool(st.session_state.recovered),
     "before_metrics": scenario["before"],
@@ -272,6 +383,6 @@ with st.expander("Prototype scope and evaluation notes"):
     st.markdown("""
     - **Implemented:** scenario-based incident detection, evidence display, hypothesis ranking, human approval, simulated recovery, verification state, timeline and JSON report.
     - **Not connected:** Prometheus, Loki/ELK, Jaeger, GitHub API, Docker, PostgreSQL or live infrastructure.
-    - **Reasoning method:** transparent scenario rules and evidence-support scores; not a trained ML model or calibrated probability.
+    - **Reasoning method:** transparent scenario rules and evidence-support scores, supplemented by optional Gemini-generated analysis. Scores are not calibrated probabilities.
     - **Safety:** recovery is simulated only. A real implementation must add authentication, authorization, audit controls, rollback safeguards and environment-specific validation.
     """)
